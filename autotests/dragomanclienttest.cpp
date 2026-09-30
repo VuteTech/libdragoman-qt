@@ -301,16 +301,17 @@ private Q_SLOTS:
         QVERIFY(m_daemon.setRegistered(false));
         Dragoman::Client client;
         const auto reply = waitFor(client.translate(u"bg"_s, u"en"_s, {u"текст"_s}));
-        std::optional<QString> listError;
-        client.listPairs([&listError](const QList<Dragoman::PairInfo> &, const QString &e) {
+        std::optional<Dragoman::Error> listError;
+        client.listPairs([&listError](const QList<Dragoman::PairInfo> &, const Dragoman::Error &e) {
             listError = e;
         });
         QTRY_VERIFY(listError.has_value());
+        QVERIFY2(listError->isDaemonMissing(), qPrintable(listError->name));
         QVERIFY(m_daemon.setRegistered(true));
         QVERIFY(reply.has_value());
         QVERIFY(!reply->ok());
         QVERIFY(!reply->error.isEmpty());
-        QVERIFY(!listError->isEmpty());
+        QVERIFY(!listError->message.isEmpty());
     }
 
 private:

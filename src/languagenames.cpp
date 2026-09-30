@@ -10,6 +10,9 @@
 
 #include <QLocale>
 
+#include <algorithm>
+#include <array>
+
 using namespace Qt::StringLiterals;
 
 namespace Dragoman
@@ -62,6 +65,34 @@ QString languageName(const QString &code)
     // Only an explicit script subtag is worth naming ("zh-Hant", not "sr").
     if (code.contains(u'-') || code.contains(u'_')) {
         name = i18nc("language name (script name)", "%1 (%2)", name, scriptName(locale.script()));
+    }
+    return name;
+}
+
+bool lowercasesLanguageNames(QStringView uiLanguage)
+{
+    // Languages that capitalise language names mid-sentence are the
+    // exception (English, German, ...); these are the common others.
+    static constexpr std::array lowercasing{u"bg", u"be", u"bs", u"ca", u"cs", u"da", u"el", u"es", u"et", u"eu", u"fi", u"fr",
+                                            u"gl", u"hr", u"hu", u"is", u"it", u"lt", u"lv", u"mk", u"nb", u"nl", u"nn", u"no",
+                                            u"pl", u"pt", u"ro", u"ru", u"sk", u"sl", u"sq", u"sr", u"sv", u"tr", u"uk"};
+    // "bg", "bg_BG", "sr@latin", "pt-BR": the language is the first part.
+    const auto end = std::ranges::find_if(uiLanguage, [](QChar c) {
+        return c == u'_' || c == u'-' || c == u'@' || c == u'.';
+    });
+    const QStringView primary = uiLanguage.first(std::distance(uiLanguage.begin(), end));
+    return std::ranges::any_of(lowercasing, [primary](const char16_t *code) {
+        return primary == QStringView(code);
+    });
+}
+
+QString languageNameInSentence(const QString &code)
+{
+    QString name = languageName(code);
+    const QStringList uiLanguages = KLocalizedString::languages();
+    const QString ui = uiLanguages.isEmpty() ? QLocale().name() : uiLanguages.constFirst();
+    if (!name.isEmpty() && lowercasesLanguageNames(ui)) {
+        name[0] = name.at(0).toLower();
     }
     return name;
 }

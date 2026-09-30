@@ -97,6 +97,28 @@ private Q_SLOTS:
         QCOMPARE(status.residentMb, -1);
     }
 
+    void lowercasesLanguageNames()
+    {
+        QVERIFY(Dragoman::lowercasesLanguageNames(u"bg"));
+        QVERIFY(Dragoman::lowercasesLanguageNames(u"bg_BG"));
+        QVERIFY(Dragoman::lowercasesLanguageNames(u"sr@latin"));
+        QVERIFY(Dragoman::lowercasesLanguageNames(u"pt-BR"));
+        QVERIFY(!Dragoman::lowercasesLanguageNames(u"en_US"));
+        QVERIFY(!Dragoman::lowercasesLanguageNames(u"de"));
+        QVERIFY(!Dragoman::lowercasesLanguageNames(u"C"));
+    }
+
+    void errorsConvertToMessages()
+    {
+        const Dragoman::Error missing{u"org.freedesktop.DBus.Error.ServiceUnknown"_s, u"no daemon"_s};
+        QVERIFY(missing.isDaemonMissing());
+        QVERIFY(!missing.isUnsupported());
+        const QString message = missing;
+        QCOMPARE(message, u"no daemon"_s);
+        QVERIFY(Dragoman::Error{}.isEmpty());
+        QVERIFY((Dragoman::Error{u"org.freedesktop.DBus.Error.UnknownMethod"_s, u"x"_s}).isUnsupported());
+    }
+
     void languageName_data()
     {
         QTest::addColumn<QString>("code");
@@ -112,6 +134,8 @@ private Q_SLOTS:
         QFETCH(QString, code);
         QFETCH(QString, expected);
         QCOMPARE(Dragoman::languageName(code), expected);
+        // In English, a name mid-sentence is the same.
+        QCOMPARE(Dragoman::languageNameInSentence(code), expected);
     }
 };
 

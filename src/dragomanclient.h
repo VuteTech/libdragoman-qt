@@ -97,11 +97,13 @@ public:
         QString priority = QStringLiteral("batch");
     };
 
-    using PairsCallback = std::function<void(const QList<PairInfo> &pairs, const QString &error)>;
-    using StatusCallback = std::function<void(const DaemonStatus &status, const QString &error)>;
-    using ErrorCallback = std::function<void(const QString &error)>;
-    using DetectCallback = std::function<void(const Detection &detection, const QString &error)>;
-    using ConfigCallback = std::function<void(const QVariantMap &config, const QString &error)>;
+    // A callback may take the error as `const Dragoman::Error &` (to read
+    // its D-Bus name) or as `const QString &` (the message).
+    using PairsCallback = std::function<void(const QList<PairInfo> &pairs, const Error &error)>;
+    using StatusCallback = std::function<void(const DaemonStatus &status, const Error &error)>;
+    using ErrorCallback = std::function<void(const Error &error)>;
+    using DetectCallback = std::function<void(const Detection &detection, const Error &error)>;
+    using ConfigCallback = std::function<void(const QVariantMap &config, const Error &error)>;
 
     explicit Client(QObject *parent = nullptr);
     ~Client() override;

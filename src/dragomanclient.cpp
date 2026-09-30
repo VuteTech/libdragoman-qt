@@ -64,10 +64,25 @@ QDBusMessage methodCall(const QString &method)
     return QDBusMessage::createMethodCall(QString::fromLatin1(serviceName), QString::fromLatin1(objectPath), QString::fromLatin1(translatorInterface), method);
 }
 
+/// The request tokens name the application (for the daemon's logs); the
+/// daemon accepts letters, digits and underscores only.
+QString tokenPrefix()
+{
+    QString name = QCoreApplication::applicationName();
+    std::ranges::replace_if(
+        name,
+        [](QChar c) {
+            const char16_t u = c.unicode();
+            return !((u >= u'0' && u <= u'9') || (u >= u'a' && u <= u'z') || (u >= u'A' && u <= u'Z'));
+        },
+        u'_');
+    return name.isEmpty() ? u"dragoman"_s : name.left(32);
+}
+
 QString nextToken()
 {
     static QAtomicInteger<quint64> counter;
-    return u"krakoman_%1_%2"_s.arg(QCoreApplication::applicationPid()).arg(counter.fetchAndAddRelaxed(1));
+    return u"%1_%2_%3"_s.arg(tokenPrefix()).arg(QCoreApplication::applicationPid()).arg(counter.fetchAndAddRelaxed(1));
 }
 
 Reply failure(const QString &message, const QString &errorName = {})
@@ -81,6 +96,17 @@ Reply failure(const QString &message, const QString &errorName = {})
 QString messageOf(const QDBusError &error)
 {
     return error.message().isEmpty() ? error.name() : error.message();
+}
+
+Error errorOf(const QDBusMessage &reply)
+{
+    const QString message = reply.errorMessage().isEmpty() ? reply.errorName() : reply.errorMessage();
+    return {reply.errorName(), message.isEmpty() ? i18n("No answer from the translation daemon.") : message};
+}
+
+Error errorOf(const QDBusError &error)
+{
+    return {error.name(), messageOf(error)};
 }
 
 /// A memory file (memfd) that closes itself; shared by the lambdas of a
@@ -458,7 +484,7 @@ void Client::listPairs(PairsCallback callback)
         const QDBusMessage reply = watcher->reply();
         if (reply.type() != QDBusMessage::ReplyMessage || reply.arguments().isEmpty()) {
             qCWarning(DRAGOMAN_LOG) << "ListLanguagePairs failed:" << reply.errorName() << reply.errorMessage();
-            callback({}, reply.errorMessage().isEmpty() ? i18n("No answer from the translation daemon.") : reply.errorMessage());
+            callback({}, errorOf(reply));
             return;
         }
         QList<PairInfo> pairs;
@@ -472,7 +498,7 @@ void Client::listPairs(PairsCallback callback)
             }
         }
         array.endArray();
-        callback(pairs, QString());
+        callback(pairs, {});
     });
 }
 
@@ -486,9 +512,9 @@ void Client::removePair(const QString &source, const QString &target, ErrorCallb
         const QDBusPendingReply<> reply = *watcher;
         if (reply.isError()) {
             qCWarning(DRAGOMAN_LOG) << "RemovePair failed:" << reply.error().name() << reply.error().message();
-            callback(messageOf(reply.error()));
+            callback(errorOf(reply.error()));
         } else {
-            callback(QString());
+            callback({});
         }
     });
 }
@@ -501,9 +527,9 @@ void Client::status(StatusCallback callback)
         const QDBusPendingReply<QVariantMap> reply = *watcher;
         if (reply.isError()) {
             qCWarning(DRAGOMAN_LOG) << "GetStatus failed:" << reply.error().name() << reply.error().message();
-            callback({}, messageOf(reply.error()));
+            callback({}, errorOf(reply.error()));
         } else {
-            callback(DaemonStatus::fromMap(reply.value()), QString());
+            callback(DaemonStatus::fromMap(reply.value()), {});
         }
     });
 }
@@ -516,10 +542,10 @@ void Client::detectLanguage(const QString &text, const QStringList &candidates, 
     }
     d->call(u"DetectLanguage"_s, {text, options}, [callback = std::move(callback)](const QDBusMessage &reply) {
         if (reply.type() != QDBusMessage::ReplyMessage || reply.arguments().isEmpty()) {
-            callback({}, reply.errorMessage().isEmpty() ? i18n("No answer from the translation daemon.") : reply.errorMessage());
+            callback({}, errorOf(reply));
             return;
         }
-        callback(Detection::fromMap(qdbus_cast<QVariantMap>(reply.arguments().constFirst())), QString());
+        callback(Detection::fromMap(qdbus_cast<QVariantMap>(reply.arguments().constFirst())), {});
     });
 }
 
@@ -527,10 +553,10 @@ void Client::config(ConfigCallback callback)
 {
     d->call(u"GetConfig"_s, {}, [callback = std::move(callback)](const QDBusMessage &reply) {
         if (reply.type() != QDBusMessage::ReplyMessage || reply.arguments().isEmpty()) {
-            callback({}, reply.errorMessage().isEmpty() ? i18n("No answer from the translation daemon.") : reply.errorMessage());
+            callback({}, errorOf(reply));
             return;
         }
-        callback(qdbus_cast<QVariantMap>(reply.arguments().constFirst()), QString());
+        callback(qdbus_cast<QVariantMap>(reply.arguments().constFirst()), {});
     });
 }
 
@@ -539,10 +565,10 @@ void Client::setConfig(const QVariantMap &changes, ErrorCallback callback)
     d->call(u"SetConfig"_s, {changes}, [callback = std::move(callback)](const QDBusMessage &reply) {
         if (reply.type() != QDBusMessage::ReplyMessage) {
             qCWarning(DRAGOMAN_LOG) << "SetConfig failed:" << reply.errorName() << reply.errorMessage();
-            callback(reply.errorMessage().isEmpty() ? reply.errorName() : reply.errorMessage());
+            callback(errorOf(reply));
             return;
         }
-        callback(QString());
+        callback({});
     });
 }
 

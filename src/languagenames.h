@@ -21,4 +21,16 @@ namespace Dragoman
  */
 [[nodiscard]] DRAGOMANQT_EXPORT QString languageName(const QString &code);
 
+/**
+ * languageName() for use inside a sentence: languages whose grammar does not
+ * capitalise language names (Bulgarian, French, Russian, ...) get it in
+ * lower case when they are the user interface language ("от английски",
+ * "de l'anglais"); in English and German it is languageName() unchanged.
+ */
+[[nodiscard]] DRAGOMANQT_EXPORT QString languageNameInSentence(const QString &code);
+
+/// Whether the user interface language @p uiLanguage (a code such as "bg"
+/// or "de_DE") writes language names in lower case inside a sentence.
+[[nodiscard]] DRAGOMANQT_EXPORT bool lowercasesLanguageNames(QStringView uiLanguage);
+
 } // namespace Dragoman

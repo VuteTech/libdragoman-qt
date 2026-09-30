@@ -41,6 +41,30 @@ struct DRAGOMANQT_EXPORT SentenceSpan {
     friend bool operator==(const SentenceSpan &, const SentenceSpan &) = default;
 };
 
+/**
+ * A failed method call: the user-presentable message, and the D-Bus error
+ * name for telling cases apart (Errors::NotInstalled, or
+ * org.freedesktop.DBus.Error.ServiceUnknown for a missing daemon). Converts
+ * to the message, so callbacks may take a QString instead. Empty on success.
+ */
+struct DRAGOMANQT_EXPORT Error {
+    QString name;
+    QString message;
+
+    [[nodiscard]] bool isEmpty() const
+    {
+        return message.isEmpty() && name.isEmpty();
+    }
+    /// The daemon is not running and cannot be started.
+    [[nodiscard]] bool isDaemonMissing() const;
+    /// The daemon runs but predates the method called.
+    [[nodiscard]] bool isUnsupported() const;
+    operator QString() const // NOLINT(google-explicit-constructor): by design
+    {
+        return message;
+    }
+};
+
 /// The outcome of one request (or of a chain of them, see Client::translate()).
 struct DRAGOMANQT_EXPORT Reply {
     enum class Status {

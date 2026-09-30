@@ -15,6 +15,17 @@ using namespace Qt::StringLiterals;
 namespace Dragoman
 {
 
+bool Error::isDaemonMissing() const
+{
+    return name == QLatin1StringView("org.freedesktop.DBus.Error.ServiceUnknown") || name == QLatin1StringView("org.freedesktop.DBus.Error.NameHasNoOwner")
+        || name.startsWith(QLatin1StringView("org.freedesktop.DBus.Error.Spawn"));
+}
+
+bool Error::isUnsupported() const
+{
+    return name == QLatin1StringView("org.freedesktop.DBus.Error.UnknownMethod");
+}
+
 QStringList Reply::translations() const
 {
     return toStringList(results.value(u"translations"_s));
