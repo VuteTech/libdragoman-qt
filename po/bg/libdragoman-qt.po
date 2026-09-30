@@ -1,0 +1,48 @@
+# Bulgarian translation of libdragoman-qt.
+# SPDX-FileCopyrightText: 2026 Blagovest Petrov <blagovest@petrovs.info>
+# SPDX-FileCopyrightText: 2026 Vute Tech Ltd. <https://vute.tech>
+# SPDX-License-Identifier: GPL-3.0-or-later
+msgid ""
+msgstr ""
+"Project-Id-Version: libdragoman-qt\n"
+"Report-Msgid-Bugs-To: https://github.com/VuteTech/libdragoman-qt/issues\n"
+"POT-Creation-Date: 2026-10-01 01:25+0300\n"
+"PO-Revision-Date: 2026-10-01 12:00+0300\n"
+"Last-Translator: Blagovest Petrov <blagovest@petrovs.info>\n"
+"Language-Team: Bulgarian\n"
+"Language: bg\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#, kde-format
+msgid "Cannot connect to the session bus."
+msgstr "Няма връзка със сесийната шина D-Bus."
+
+#, kde-format
+msgid "The request was cancelled."
+msgstr "Заявката е отменена."
+
+#, kde-format
+msgid "The translation daemon reported a failure."
+msgstr "Услугата за превод съобщи за грешка."
+
+#, kde-format
+msgid "No answer from the translation daemon."
+msgstr "Услугата за превод не отговаря."
+
+#, kde-format
+msgctxt "Chinese script variant"
+msgid "Simplified"
+msgstr "опростен"
+
+#, kde-format
+msgctxt "Chinese script variant"
+msgid "Traditional"
+msgstr "традиционен"
+
+#, kde-format
+msgctxt "language name (script name)"
+msgid "%1 (%2)"
+msgstr "%1 (%2)"

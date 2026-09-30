@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 Blagovest Petrov <blagovest@petrovs.info>
+# SPDX-FileCopyrightText: 2026 Vute Tech Ltd. <https://vute.tech>
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# DragomanQtConfig.cmake for using a build tree directly
+# (-DDragomanQt_DIR=<build>/buildtree), without installing.
+
+include(CMakeFindDependencyMacro)
+find_dependency(Qt6Core @QT_MIN_VERSION@)
+find_dependency(Qt6DBus @QT_MIN_VERSION@)
+find_dependency(KF6I18n @KF_MIN_VERSION@)
+
+include("${CMAKE_CURRENT_LIST_DIR}/DragomanQtTargets.cmake")
+
+set(DragomanQt_TESTING_INCLUDE_DIR "@CMAKE_CURRENT_SOURCE_DIR@/testing")
