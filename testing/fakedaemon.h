@@ -122,10 +122,14 @@ public:
     int prepareCalls = 0;
     int cancelCalls = 0;
     QList<qsizetype> batchSizes; ///< segments per Translate call
+    /// The daemon's defaults, with its types (t, u, b).
     QVariantMap config{
         {u"memory_budget_mb"_s, QVariant::fromValue(qulonglong(512))},
         {u"keep_warm"_s, QVariant::fromValue(uint(2))},
+        {u"keep_warm_seconds"_s, QVariant::fromValue(qulonglong(600))},
+        {u"idle_exit_seconds"_s, QVariant::fromValue(qulonglong(60))},
         {u"network"_s, true},
+        {u"allow_prerelease"_s, false},
     };
 
 public Q_SLOTS:
