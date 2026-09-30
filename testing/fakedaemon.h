@@ -17,11 +17,13 @@
 
 #include "dragomantypes.h"
 
+#include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusContext>
 #include <QDBusMessage>
 #include <QDBusMetaType>
 #include <QDBusObjectPath>
+#include <QDBusUnixFileDescriptor>
 #include <QFile>
 #include <QProcess>
 #include <QSet>
@@ -29,7 +31,41 @@
 #include <QTemporaryDir>
 #include <QTest>
 
+#include <algorithm>
 #include <optional>
+
+#include <unistd.h>
+
+namespace Fake
+{
+
+/// One (uuuu) entry of Translate's "sentences" result.
+struct SentenceSpan {
+    uint sourceBegin = 0;
+    uint sourceEnd = 0;
+    uint targetBegin = 0;
+    uint targetEnd = 0;
+};
+
+inline QDBusArgument &operator<<(QDBusArgument &argument, const SentenceSpan &span)
+{
+    argument.beginStructure();
+    argument << span.sourceBegin << span.sourceEnd << span.targetBegin << span.targetEnd;
+    argument.endStructure();
+    return argument;
+}
+
+inline const QDBusArgument &operator>>(const QDBusArgument &argument, SentenceSpan &span)
+{
+    argument.beginStructure();
+    argument >> span.sourceBegin >> span.sourceEnd >> span.targetBegin >> span.targetEnd;
+    argument.endStructure();
+    return argument;
+}
+
+} // namespace Fake
+
+Q_DECLARE_METATYPE(Fake::SentenceSpan)
 
 namespace Fake
 {
@@ -86,6 +122,11 @@ public:
     int prepareCalls = 0;
     int cancelCalls = 0;
     QList<qsizetype> batchSizes; ///< segments per Translate call
+    QVariantMap config{
+        {u"memory_budget_mb"_s, QVariant::fromValue(qulonglong(512))},
+        {u"keep_warm"_s, QVariant::fromValue(uint(2))},
+        {u"network"_s, true},
+    };
 
 public Q_SLOTS:
     Q_SCRIPTABLE QDBusObjectPath Translate(const QString &source, const QString &target, const QStringList &segments, const QVariantMap &options)
@@ -102,13 +143,101 @@ public Q_SLOTS:
         } else if (!failWith.isEmpty()) {
             respond(path, 2, {{u"error"_s, failWith}});
         } else {
+            // Upper case keeps every length, so each segment is one
+            // sentence covering the same code points on both sides.
             QStringList translations;
+            QList<QList<SentenceSpan>> sentences;
             for (const QString &segment : segments) {
                 translations.append(segment.toUpper());
+                const auto length = uint(segment.toUcs4().size());
+                sentences.append({SentenceSpan{0, length, 0, length}});
             }
-            respond(path, 0, {{u"translations"_s, translations}});
+            QVariantMap results{{u"translations"_s, translations}};
+            if (options.value(u"sentences"_s).toBool()) {
+                results.insert(u"sentences"_s, QVariant::fromValue(sentences));
+            }
+            respond(path, 0, results);
         }
         return QDBusObjectPath(path);
+    }
+
+    /// Upper-cases every line with a letter or digit, like the real daemon
+    /// translates them.
+    Q_SCRIPTABLE QDBusObjectPath TranslateFd(const QString &source,
+                                             const QString &target,
+                                             const QDBusUnixFileDescriptor &input,
+                                             const QDBusUnixFileDescriptor &output,
+                                             const QVariantMap &options)
+    {
+        if (!installed.contains(source + u'-' + target)) {
+            sendErrorReply(u"dev.l10n_bg.dragomand.Error.NotInstalled"_s, u"%1-%2 is not installed"_s.arg(source, target));
+            return {};
+        }
+        QByteArray bytes;
+        char buffer[4096];
+        for (;;) {
+            const auto got = ::read(input.fileDescriptor(), buffer, sizeof buffer);
+            if (got <= 0) {
+                break;
+            }
+            bytes.append(buffer, got);
+        }
+        QStringList lines = QString::fromUtf8(bytes).split(u'\n');
+        uint translated = 0;
+        for (QString &line : lines) {
+            if (std::ranges::any_of(line, [](QChar c) {
+                    return c.isLetterOrNumber();
+                })) {
+                line = line.toUpper();
+                ++translated;
+            }
+        }
+        const QByteArray result = lines.join(u'\n').toUtf8();
+        if (::write(output.fileDescriptor(), result.constData(), size_t(result.size())) != result.size()) {
+            qWarning("fake daemon: short write");
+        }
+        const QString path = pathFor(options);
+        QDBusMessage progress = QDBusMessage::createSignal(path, QString::fromLatin1(requestInterface), u"Progress"_s);
+        progress << 1.0 << u"translating"_s;
+        m_connection.send(progress);
+        respond(path, 0, {{u"lines"_s, translated}});
+        return QDBusObjectPath(path);
+    }
+
+    /// Cyrillic text is Bulgarian, anything else English, within the candidates.
+    Q_SCRIPTABLE QVariantMap DetectLanguage(const QString &text, const QVariantMap &options)
+    {
+        const bool cyrillic = std::ranges::any_of(text, [](QChar c) {
+            return c.script() == QChar::Script_Cyrillic;
+        });
+        const QString language = cyrillic ? u"bg"_s : u"en"_s;
+        const QStringList candidates = qdbus_cast<QStringList>(options.value(u"candidates"_s));
+        QVariantMap results{{u"confidence"_s, 0.9}, {u"reliable"_s, true}};
+        if (candidates.isEmpty() || candidates.contains(language)) {
+            results.insert(u"language"_s, language);
+        }
+        return results;
+    }
+
+    Q_SCRIPTABLE QVariantMap GetConfig()
+    {
+        return config;
+    }
+
+    Q_SCRIPTABLE void SetConfig(const QVariantMap &changes)
+    {
+        for (auto it = changes.cbegin(); it != changes.cend(); ++it) {
+            if (!config.contains(it.key())) {
+                sendErrorReply(u"dev.l10n_bg.dragomand.Error.InvalidArgument"_s, u"unknown setting %1"_s.arg(it.key()));
+                return;
+            }
+        }
+        for (auto it = changes.cbegin(); it != changes.cend(); ++it) {
+            config.insert(it.key(), it.value());
+        }
+        QDBusMessage changed = QDBusMessage::createSignal(QString::fromLatin1(objectPath), QString::fromLatin1(serviceName), u"ConfigChanged"_s);
+        changed << config;
+        m_connection.send(changed);
     }
 
     Q_SCRIPTABLE QDBusObjectPath PreparePair(const QString &source, const QString &target, const QVariantMap &options)
@@ -145,6 +274,10 @@ public Q_SLOTS:
                 record.insert(u"installed_version"_s, u"3.0"_s);
                 record.insert(u"origin"_s, u"user"_s);
                 record.insert(u"size"_s, QVariant::fromValue(quint64(32 * 1024 * 1024)));
+            }
+            if (source == u"bg") {
+                record.insert(u"release_status"_s, u"Release"_s);
+                record.insert(u"quality"_s, 0.8719);
             }
             pairs.append(record);
         }
@@ -225,6 +358,9 @@ public:
         QVERIFY(QDBusConnection::sessionBus().isConnected());
 
         qDBusRegisterMetaType<QList<QVariantMap>>();
+        qDBusRegisterMetaType<SentenceSpan>();
+        qDBusRegisterMetaType<QList<SentenceSpan>>();
+        qDBusRegisterMetaType<QList<QList<SentenceSpan>>>();
         m_connection.emplace(QDBusConnection::connectToBus(QString::fromUtf8(address), u"fake-dragomand"_s));
         QVERIFY(m_connection->isConnected());
         translator = new Translator(*m_connection);

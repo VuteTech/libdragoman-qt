@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: libdragoman-qt\n"
 "Report-Msgid-Bugs-To: https://github.com/VuteTech/libdragoman-qt/issues\n"
-"POT-Creation-Date: 2026-10-01 01:25+0300\n"
+"POT-Creation-Date: 2026-10-01 02:02+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -31,6 +31,10 @@ msgstr ""
 
 #, kde-format
 msgid "No answer from the translation daemon."
+msgstr ""
+
+#, kde-format
+msgid "Cannot create a memory file for the document."
 msgstr ""
 
 #, kde-format

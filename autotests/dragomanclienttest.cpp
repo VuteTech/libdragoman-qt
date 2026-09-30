@@ -181,7 +181,10 @@ private Q_SLOTS:
         QCOMPARE(bgEn.installedVersion, u"3.0"_s);
         QCOMPARE(bgEn.size, 32 * 1024 * 1024);
         QVERIFY(bgEn.hasUpdate());
+        QCOMPARE(bgEn.releaseStatus, u"Release"_s);
+        QCOMPARE(bgEn.quality, 0.8719);
         QVERIFY(!pairs->at(2).isInstalled());
+        QCOMPARE(pairs->at(2).quality, -1.0);
     }
 
     void reportsStatus()
@@ -205,6 +208,92 @@ private Q_SLOTS:
         QVERIFY(reply.has_value());
         QVERIFY(reply->ok());
         QCOMPARE(Dragoman::toStringList(reply->results.value(u"updates"_s)).size(), 1);
+    }
+
+    void reportsSentences()
+    {
+        Dragoman::Client client;
+        Dragoman::Client::TranslateOptions options;
+        options.sentences = true;
+        const auto reply = waitFor(client.translate(u"bg"_s, u"en"_s, {u"добро"_s, u"утро 🌅"_s}, options));
+        QVERIFY(reply.has_value());
+        QVERIFY2(reply->ok(), qPrintable(reply->error));
+        const auto sentences = reply->sentences();
+        QCOMPARE(sentences.size(), 2);
+        QCOMPARE(sentences.at(0), QList<Dragoman::SentenceSpan>({{0, 5, 0, 5}}));
+        // Code points: the emoji is one, though QString needs two units.
+        QCOMPARE(sentences.at(1), QList<Dragoman::SentenceSpan>({{0, 6, 0, 6}}));
+        QCOMPARE(Dragoman::toUtf16(u"утро 🌅", 6), 7);
+
+        // Not asked for: none.
+        const auto plain = waitFor(client.translate(u"bg"_s, u"en"_s, {u"добро"_s}));
+        QVERIFY(plain->sentences().isEmpty());
+    }
+
+    void translatesDocuments()
+    {
+        Dragoman::Client client;
+        const int prepareBefore = m_daemon.translator->prepareCalls;
+        auto *job = client.translateDocument(u"de"_s, u"en"_s, u"guten Tag\n\n---\nzweite Zeile\n"_s);
+        QSignalSpy progress(job, &Dragoman::Job::progress);
+        const auto reply = waitFor(job);
+        QVERIFY(reply.has_value());
+        QVERIFY2(reply->ok(), qPrintable(reply->error));
+        QCOMPARE(reply->document(), u"GUTEN TAG\n\n---\nZWEITE ZEILE\n"_s);
+        QCOMPARE(reply->results.value(u"lines"_s).toUInt(), 2U);
+        QVERIFY(reply->prepared); // installed on demand first
+        QCOMPARE(m_daemon.translator->prepareCalls, prepareBefore + 1);
+        QVERIFY(progress.count() >= 2); // the install, then the lines
+        m_daemon.translator->installed.remove(u"de-en"_s);
+    }
+
+    void detectsLanguages()
+    {
+        Dragoman::Client client;
+        std::optional<Dragoman::Detection> detection;
+        client.detectLanguage(u"Добро утро"_s, {}, [&](const Dragoman::Detection &d, const QString &e) {
+            QVERIFY2(e.isEmpty(), qPrintable(e));
+            detection = d;
+        });
+        QTRY_VERIFY(detection.has_value());
+        QCOMPARE(detection->language, u"bg"_s);
+        QVERIFY(detection->reliable);
+
+        detection.reset();
+        client.detectLanguage(u"Добро утро"_s, {u"en"_s}, [&](const Dragoman::Detection &d, const QString &) {
+            detection = d;
+        });
+        QTRY_VERIFY(detection.has_value());
+        QVERIFY(detection->language.isEmpty());
+    }
+
+    void changesConfig()
+    {
+        Dragoman::Client client;
+        QSignalSpy changed(&client, &Dragoman::Client::configChanged);
+        std::optional<QVariantMap> config;
+        client.config([&](const QVariantMap &c, const QString &e) {
+            QVERIFY2(e.isEmpty(), qPrintable(e));
+            config = c;
+        });
+        QTRY_VERIFY(config.has_value());
+        QCOMPARE(config->value(u"memory_budget_mb"_s).toULongLong(), 512ULL);
+
+        std::optional<QString> error;
+        client.setConfig({{u"memory_budget_mb"_s, QVariant::fromValue(qulonglong(256))}}, [&](const QString &e) {
+            error = e;
+        });
+        QTRY_VERIFY(error.has_value());
+        QVERIFY2(error->isEmpty(), qPrintable(*error));
+        QTRY_COMPARE(changed.count(), 1);
+        QCOMPARE(changed.at(0).at(0).toMap().value(u"memory_budget_mb"_s).toULongLong(), 256ULL);
+
+        error.reset();
+        client.setConfig({{u"no_such_key"_s, true}}, [&](const QString &e) {
+            error = e;
+        });
+        QTRY_VERIFY(error.has_value());
+        QVERIFY(!error->isEmpty());
     }
 
     void failsCleanlyWithoutDaemon()

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: libdragoman-qt\n"
 "Report-Msgid-Bugs-To: https://github.com/VuteTech/libdragoman-qt/issues\n"
-"POT-Creation-Date: 2026-10-01 01:25+0300\n"
+"POT-Creation-Date: 2026-10-01 02:02+0300\n"
 "PO-Revision-Date: 2026-10-01 12:00+0300\n"
 "Last-Translator: Blagovest Petrov <blagovest@petrovs.info>\n"
 "Language-Team: Bulgarian\n"
@@ -31,6 +31,10 @@ msgstr "Услугата за превод съобщи за грешка."
 #, kde-format
 msgid "No answer from the translation daemon."
 msgstr "Услугата за превод не отговаря."
+
+#, kde-format
+msgid "Cannot create a memory file for the document."
+msgstr "Не може да се създаде файл в паметта за документа."
 
 #, kde-format
 msgctxt "Chinese script variant"

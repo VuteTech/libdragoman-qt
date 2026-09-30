@@ -83,11 +83,25 @@ public:
         bool html = false;
         /// "interactive" or "batch".
         QString priority = QStringLiteral("interactive");
+        /// Also return Reply::sentences().
+        bool sentences = false;
+    };
+
+    struct DocumentOptions {
+        /// On NotInstalled, run PreparePair (with progress) and retry once.
+        bool installOnDemand = true;
+        bool allowPivot = true;
+        /// The lines are HTML; the markup is kept in the translation.
+        bool html = false;
+        /// "interactive" or "batch".
+        QString priority = QStringLiteral("batch");
     };
 
     using PairsCallback = std::function<void(const QList<PairInfo> &pairs, const QString &error)>;
     using StatusCallback = std::function<void(const DaemonStatus &status, const QString &error)>;
     using ErrorCallback = std::function<void(const QString &error)>;
+    using DetectCallback = std::function<void(const Detection &detection, const QString &error)>;
+    using ConfigCallback = std::function<void(const QVariantMap &config, const QString &error)>;
 
     explicit Client(QObject *parent = nullptr);
     ~Client() override;
@@ -97,6 +111,17 @@ public:
     [[nodiscard]] Job *translate(const QString &source, const QString &target, const QStringList &segments)
     {
         return translate(source, target, segments, TranslateOptions{});
+    }
+    /**
+     * Translates a whole document line by line through TranslateFd: the
+     * text travels through a memory file, not the bus. Lines without a
+     * letter or digit are copied. Progress reports the fraction of lines
+     * done; success carries Reply::document() and results["lines"].
+     */
+    [[nodiscard]] Job *translateDocument(const QString &source, const QString &target, const QString &text, const DocumentOptions &options);
+    [[nodiscard]] Job *translateDocument(const QString &source, const QString &target, const QString &text)
+    {
+        return translateDocument(source, target, text, DocumentOptions{});
     }
     /// Installs the pair if missing (network), then loads it.
     [[nodiscard]] Job *preparePair(const QString &source, const QString &target, bool allowPivot = true);
@@ -110,6 +135,22 @@ public:
     /// Removes every user-store copy of the pair.
     void removePair(const QString &source, const QString &target, ErrorCallback callback);
     void status(StatusCallback callback);
+
+    /// Identifies the language of @p text, among @p candidates when given
+    /// (otherwise among the daemon's known languages).
+    void detectLanguage(const QString &text, const QStringList &candidates, DetectCallback callback);
+
+    /// The daemon's configuration (see GetConfig).
+    void config(ConfigCallback callback);
+    /// Changes configuration keys; saved and applied at once, all or nothing.
+    void setConfig(const QVariantMap &changes, ErrorCallback callback);
+
+Q_SIGNALS:
+    /// The daemon's whole configuration after any client changed it.
+    void configChanged(const QVariantMap &config);
+
+protected:
+    void connectNotify(const QMetaMethod &signal) override;
 
 private:
     std::unique_ptr<class ClientPrivate> d;

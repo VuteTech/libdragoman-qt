@@ -27,6 +27,14 @@ connect(job, &Dragoman::Job::finished, this, [](const Dragoman::Reply &reply) {
   error), never from inside the call that created it, and can be
   cancelled. A missing language pair is installed on demand, with
   progress, unless the caller opts out.
+- `translate()` can return sentence alignment (`Reply::sentences()`), so
+  editors can highlight the matching sentence on the other side;
+  `translateDocument()` sends whole documents through a memory file
+  instead of the bus.
+- `detectLanguage()`, `listPairs()` (with Mozilla's quality scores),
+  `installPair()`, `removePair()`, `checkForUpdates()`, `status()`, and
+  `config()`/`setConfig()` with the `configChanged()` signal cover the
+  rest of the daemon's API.
 - The client subscribes to a request's signals before it calls the
   method, so no signal is ever missed.
 - `Dragoman::languageName()` names languages in the user's language from

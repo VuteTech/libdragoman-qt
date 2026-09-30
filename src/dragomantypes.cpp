@@ -25,6 +25,49 @@ QString Reply::pivot() const
     return results.value(u"pivot"_s).toString();
 }
 
+QList<QList<SentenceSpan>> Reply::sentences() const
+{
+    QList<QList<SentenceSpan>> segments;
+    const QVariant value = results.value(u"sentences"_s);
+    if (!value.canConvert<QDBusArgument>()) {
+        return segments;
+    }
+    const auto argument = value.value<QDBusArgument>();
+    argument.beginArray();
+    while (!argument.atEnd()) {
+        QList<SentenceSpan> spans;
+        argument.beginArray();
+        while (!argument.atEnd()) {
+            uint sourceBegin = 0;
+            uint sourceEnd = 0;
+            uint targetBegin = 0;
+            uint targetEnd = 0;
+            argument.beginStructure();
+            argument >> sourceBegin >> sourceEnd >> targetBegin >> targetEnd;
+            argument.endStructure();
+            spans.append({int(sourceBegin), int(sourceEnd), int(targetBegin), int(targetEnd)});
+        }
+        argument.endArray();
+        segments.append(spans);
+    }
+    argument.endArray();
+    return segments;
+}
+
+QString Reply::document() const
+{
+    return results.value(u"document"_s).toString();
+}
+
+Detection Detection::fromMap(const QVariantMap &map)
+{
+    Detection detection;
+    detection.language = map.value(u"language"_s).toString();
+    detection.confidence = std::clamp(map.value(u"confidence"_s).toDouble(), 0.0, 1.0);
+    detection.reliable = map.value(u"reliable"_s).toBool();
+    return detection;
+}
+
 PairInfo PairInfo::fromRecord(const QVariantMap &record)
 {
     PairInfo info;
@@ -37,6 +80,9 @@ PairInfo PairInfo::fromRecord(const QVariantMap &record)
     bool ok = false;
     const qint64 size = record.value(u"size"_s).toLongLong(&ok);
     info.size = ok ? size : -1;
+    info.releaseStatus = record.value(u"release_status"_s).toString();
+    const double quality = record.value(u"quality"_s).toDouble(&ok);
+    info.quality = ok && quality >= 0 && quality <= 1 ? quality : -1;
     return info;
 }
 
@@ -125,6 +171,15 @@ QStringList toStringList(const QVariant &value)
         return qdbus_cast<QStringList>(value.value<QDBusArgument>());
     }
     return value.toStringList();
+}
+
+int toUtf16(QStringView text, int codePoint)
+{
+    int index = 0;
+    for (int seen = 0; seen < codePoint && index < text.size(); ++seen) {
+        index += text.at(index).isHighSurrogate() && index + 1 < text.size() ? 2 : 1;
+    }
+    return index;
 }
 
 QString requestPath(QStringView uniqueName, QStringView token)
