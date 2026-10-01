@@ -95,7 +95,8 @@ endif()
 configure_package_config_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/DragomanQtConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/DragomanQtConfig.cmake
-    INSTALL_DESTINATION ${CMAKECONFIG_INSTALL_DIR})
+    INSTALL_DESTINATION ${CMAKECONFIG_INSTALL_DIR}
+    PATH_VARS KDE_INSTALL_INCLUDEDIR)
 install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/DragomanQtConfig.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/DragomanQtConfigVersion.cmake

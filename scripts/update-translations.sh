@@ -12,6 +12,8 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 podir="$root/po"
 export podir
 
+# The commas belong to xgettext's keyword syntax.
+# shellcheck disable=SC2054
 keywords=(
     -ki18n:1 -ki18nc:1c,2 -ki18np:1,2 -ki18ncp:1c,2,3
     -kki18n:1 -kki18nc:1c,2 -kki18np:1,2 -kki18ncp:1c,2,3

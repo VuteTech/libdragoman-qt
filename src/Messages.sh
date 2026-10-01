@@ -6,5 +6,6 @@
 # Extracts the translatable strings into $podir/libdragoman-qt.pot, following
 # KDE's Messages.sh convention (XGETTEXT and podir come from the
 # environment; scripts/update-translations.sh sets them).
-# shellcheck disable=SC2154
+# The file list and XGETTEXT are split into words on purpose.
+# shellcheck disable=SC2154,SC2046,SC2086
 $XGETTEXT $(find . -name '*.cpp' -o -name '*.h' | sort) -o "$podir/libdragoman-qt.pot"
