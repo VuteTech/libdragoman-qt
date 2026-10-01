@@ -1,0 +1,38 @@
+Source: libdragoman-qt
+Section: libs
+Priority: optional
+Maintainer: Blagovest Petrov <blagovest@petrovs.info>
+Build-Depends: debhelper-compat (= 13),
+ cmake (>= 3.24),
+ ninja-build,
+ extra-cmake-modules (>= 6.13),
+ gettext,
+ qt6-base-dev (>= 6.8),
+ libkf6i18n-dev (>= 6.13),
+ dbus-daemon
+Standards-Version: 4.7.0
+Homepage: https://dragomand.l10n-bg.dev
+Vcs-Browser: https://github.com/VuteTech/libdragoman-qt
+Vcs-Git: https://github.com/VuteTech/libdragoman-qt.git
+Rules-Requires-Root: no
+
+Package: libdragoman-qt@SOVERSION@
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: dragomand
+Description: Qt client library for the Dragomand translation daemon
+ A Qt 6 library for applications that translate text offline through the
+ Dragomand daemon and Mozilla's Firefox translation models. It wraps the
+ daemon's D-Bus API in asynchronous jobs: translation of segments and
+ documents, language detection, sentence alignment, model installation
+ and the daemon's settings.
+
+Package: libdragoman-qt-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends: libdragoman-qt@SOVERSION@ (= ${binary:Version}), qt6-base-dev (>= 6.8), ${misc:Depends}
+Description: Qt client library for the Dragomand translation daemon (development files)
+ Headers and the CMake package (DragomanQt) for building applications on
+ libdragoman-qt, plus a fake daemon for their unit tests.

@@ -8,7 +8,15 @@
 version = 1
 
 [[annotations]]
-path = ["**.md", "po/**.po", "po/*.pot"]
+path = [
+    "**.md",
+    "po/**.po",
+    "po/*.pot",
+    "packaging/obs/debian.changelog",
+    "packaging/obs/debian.control",
+    "packaging/obs/debian.*.install",
+    "packaging/obs/libdragoman-qt.dsc",
+]
 precedence = "aggregate"
 SPDX-FileCopyrightText = [
     "2026 Blagovest Petrov <blagovest@petrovs.info>",

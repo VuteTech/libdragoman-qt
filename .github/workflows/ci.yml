@@ -2,7 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Vute Tech Ltd. <https://vute.tech>
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Every push to master and every pull request.
+# Every push to master and every pull request. The release workflow also
+# calls it on the tagged commit before anything reaches OBS; this workflow
+# itself never publishes anything.
 #
 # The builds run in distribution containers, because the Ubuntu runners do
 # not ship KF6: Debian 13 carries the oldest supported KF6 and Qt, Fedora 44
@@ -13,6 +15,12 @@ on:
   push:
     branches: [master]
   pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Commit or tag to test (empty: the triggering commit)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -23,6 +31,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
       - name: REUSE compliance
         run: pipx run reuse lint
       - name: Scripts are executable
@@ -79,6 +89,7 @@ jobs:
             appstream dbus-daemon clang-tools-extra
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.ref }}
           fetch-depth: 0
       - name: Configure
         run: |
