@@ -19,12 +19,12 @@ ecm_qt_declare_logging_category(DragomanQt
     EXPORT DRAGOMANQT)
 ecm_generate_export_header(DragomanQt
     BASE_NAME DragomanQt
-    VERSION ${PROJECT_VERSION}
+    VERSION ${DRAGOMANQT_RELEASE_VERSION}
     USE_VERSION_HEADER dragomanqt_version.h
     DEPRECATED_BASE_VERSION 0)
 set_target_properties(DragomanQt PROPERTIES
     OUTPUT_NAME dragoman-qt
-    VERSION ${DRAGOMANQT_VERSION}
+    VERSION ${DRAGOMANQT_RELEASE_VERSION}
     SOVERSION ${DRAGOMANQT_SOVERSION}
     EXPORT_NAME DragomanQt)
 target_compile_definitions(DragomanQt PRIVATE TRANSLATION_DOMAIN="libdragoman-qt")

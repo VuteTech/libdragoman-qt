@@ -73,6 +73,9 @@ ecm_set_disabled_deprecation_versions(QT ${QT_MIN_VERSION} KF ${KF_MIN_VERSION})
 
 # The API is young: the SO version is the minor version until 1.0.
 set(DRAGOMANQT_SOVERSION ${PROJECT_VERSION_MINOR})
+# Between tags the version has a fourth component, the number of commits
+# since the tag; the export header and the library file take X.Y.Z only.
+set(DRAGOMANQT_RELEASE_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
 ecm_setup_version(${PROJECT_VERSION}
     VARIABLE_PREFIX DRAGOMANQT
     VERSION_HEADER ${CMAKE_CURRENT_BINARY_DIR}/src/dragomanqt_version.h
